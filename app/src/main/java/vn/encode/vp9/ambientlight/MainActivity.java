@@ -34,6 +34,8 @@ import android.widget.Toast;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -49,13 +51,14 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     List<Float> value;
     Timer stableTimer;
     boolean stop=false;
-    float currentValue,lastValue=0;
+    float currentValue,lastValue=-1;
     EditText editText;
     int iTimer=0;
     ArrayAdapter<Float> adapter;
     Button clear,pause;
     FileOutputStream outputStream;
-
+    ArrayList<ArrayList<Float>> totalList;
+    int cycle=0;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -68,6 +71,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         btn = (Button) findViewById(R.id.button);
 
         pause = (Button) findViewById(R.id.pause);
+        pause.setText("running");
         pause.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -103,8 +107,41 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         text = (TextView) findViewById(R.id.textView);
         updateListview();
         GetSensor();
+        totalList = new ArrayList<>();
+        for(int i=0; i<30;i++)
+        {
+            totalList.add(new ArrayList<Float>());
+        }
     }
 
+    float GetMostCommonValue(ArrayList<Float> list)
+    {
+        float result=-1,current=-1;
+        int i=0,count=0,maxcount=0;
+        Collections.sort(list);
+        while (list.size()>0)
+        {
+           Log.e ("ryu","sort: "+ list.get(0));
+           current = list.get(0);
+
+           list.remove(0);
+           List<Float> countList = list;
+           while(list.remove(current))
+           {
+               count++;
+               if(count>maxcount)
+               {
+                   maxcount=count;
+                   result = current;
+               }
+           }
+           count =0;
+        }
+        if(result==-1)
+            return current;
+        else
+            return result;
+    }
     void CheckPermission()
     {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
@@ -136,44 +173,57 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
     @Override
     public void onSensorChanged(SensorEvent event) {
-        currentValue = event.values[0];
-
-//        Log.e("ryu","event: "+ currentValue);
-//        Log.e("RYU", "current: "+currentValue + " "+lastValue+" "+stop);
-        if((currentValue == lastValue) || stop)
-        {
-//            Log.e("RYu ","return ");
+        if(stop)
             return;
+        currentValue = event.values[0];
+        if(lastValue == -1)
+        {
+            lastValue = currentValue;
+            totalList.get(cycle).add(currentValue);
         }
-
-        stableTimer.cancel();
-        stableTimer.purge();
-
-
-        stableTimer = new Timer();
-        stableTimer.schedule(new TimerTask() {
-            @Override
-            public void run() {
-                iTimer += 100;
-                if(iTimer>2000 && currentValue!= lastValue && !stop)
-                {
-                    value.add(currentValue);
-                    runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            updateListview();
-                        }
-                    });
-                    lastValue =currentValue;
-                    iTimer=0;
-                    stableTimer.purge();
-                }
+        else
+        {
+            if(ItinRange())
+            {
+                totalList.get(cycle).add(currentValue);
             }
-        }, 100, 100);
+            else
+            {
+                cycle++;
+                if(cycle>29)
+                {
+                    Log.e("ryu", "cycle > 9");
+                    cycle=1;
+                    stop = true;
+                    pause.setText("paused");
+                    for(int i =0 ;i<totalList.size();i++)
+                    {
+                        Log.e("ryu", "list i: "+i);
+                        value.add(GetMostCommonValue(totalList.get(i)));
+                    }
+                    Collections.sort(value);
+                    for(int i =0 ;i<value.size();i++)
+                    {
+                        Log.e("ryu", "value: "+ value.get(i));
+                    }
+                }
+                totalList.get(cycle).add(currentValue);
+            }
+        }
+        lastValue = currentValue;
         text.setText("Lux: "+String.valueOf(currentValue));
 
     }
-
+    boolean ItinRange()
+    {
+        float subtain = Math.abs(lastValue-currentValue);
+        if(subtain>(lastValue*0.1))
+        {
+            return false;
+        }
+        else
+            return true;
+    }
     void WriteValueToFile()
     {
         String filename = Environment.getExternalStorageDirectory()+"/"+String.valueOf(System.currentTimeMillis())+".txt";
