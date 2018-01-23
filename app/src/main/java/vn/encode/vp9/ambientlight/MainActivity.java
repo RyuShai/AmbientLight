@@ -58,6 +58,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     Button clear,pause;
     FileOutputStream outputStream;
     ArrayList<ArrayList<Float>> totalList;
+    int listSize=20;
     int cycle=0;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -108,10 +109,83 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         updateListview();
         GetSensor();
         totalList = new ArrayList<>();
-        for(int i=0; i<30;i++)
+        for(int i=0; i<listSize;i++)
         {
             totalList.add(new ArrayList<Float>());
         }
+    }
+
+
+    List<Float> RemoveSameValue(List<Float> list)
+    {
+        float current=-1;
+        List<Float> result = new ArrayList<Float>();
+        Collections.sort(list);
+        while (list.size()>0)
+        {
+//            Log.e ("ryu","sort: "+ list.get(0));
+            current = list.get(0);
+            result.add(current);
+            list.remove(0);
+            List<Float> countList = list;
+            while(list.remove(current))
+            {
+
+            }
+        }
+        for(int i=0; i<result.size();i++)
+        {
+            Log.e("ryu", "resutl: "+ result.get(i));
+        }
+        for(int i=0; i<result.size()-1;i++)
+        {
+            float sub = result.get(i+1)-result.get(i);
+            float ratio = (float) Math.ceil(result.get(i)*0.2);
+            Log.e("ryu", "sub: "+ sub +" ratio: "+ ratio);
+            if(sub<=ratio)
+            {
+                result.remove(i+1);
+                i=0;
+            }
+        }
+        if(result.size()>10)
+        {
+             float chechLech=result.get(result.size()-1);
+             float subValue;
+             List<Float> pos = new ArrayList<>();
+            for( int i=0; i>result.size()-1;i++)
+            {
+                pos.add(result.get(i+1)-result.get(i));
+            }
+            float min=500;
+            int position=0;
+            while (result.size()>10)
+            {
+                for(int i=0; i<result.size();i++)
+                {
+                    if(pos.get(i)<min)
+                    {
+                        min= pos.get(i);
+                        position = i;
+                    }
+                }
+                result.remove(result.get(position));
+                pos.remove(result.get(position));
+            }
+        }
+        return result;
+    }
+
+    Float TotalListValue(List<Float> list)
+    {
+        float result=0;
+        if(list.size()==0)
+            return  result;
+        for(int i=0;i<list.size();i++)
+        {
+            result+=list.get(i);
+        }
+        return (result/list.size());
     }
 
     float GetMostCommonValue(ArrayList<Float> list)
@@ -121,7 +195,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         Collections.sort(list);
         while (list.size()>0)
         {
-           Log.e ("ryu","sort: "+ list.get(0));
+//           Log.e ("ryu","sort: "+ list.get(0));
            current = list.get(0);
 
            list.remove(0);
@@ -190,7 +264,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             else
             {
                 cycle++;
-                if(cycle>29)
+                if(cycle>=listSize)
                 {
                     Log.e("ryu", "cycle > 9");
                     cycle=1;
@@ -198,10 +272,11 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                     pause.setText("paused");
                     for(int i =0 ;i<totalList.size();i++)
                     {
-                        Log.e("ryu", "list i: "+i);
+//                        Log.e("ryu", "list i: "+i);
                         value.add(GetMostCommonValue(totalList.get(i)));
                     }
-                    Collections.sort(value);
+                    value = RemoveSameValue(value);
+                    Log.e("ryu","value size: " + value.size());
                     for(int i =0 ;i<value.size();i++)
                     {
                         Log.e("ryu", "value: "+ value.get(i));
@@ -216,8 +291,10 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     }
     boolean ItinRange()
     {
-        float subtain = Math.abs(lastValue-currentValue);
-        if(subtain>(lastValue*0.1))
+        if(totalList.get(cycle).size()<=0)
+            return false;
+        float subtain = Math.abs(TotalListValue(totalList.get(cycle))-currentValue);
+        if(subtain>(lastValue*0.2))
         {
             return false;
         }
