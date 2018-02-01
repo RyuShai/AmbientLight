@@ -1,0 +1,42 @@
+
+sua thuat toan theo anh Ton, cách đổi sáng theo anh Cuong 
+
+
+test1:
+
+01-25 16:37:09.260 21313-21313/vn.encode.vp9.ambientlight E/ryu: last data: 3.0
+01-25 16:37:09.260 21313-21313/vn.encode.vp9.ambientlight E/ryu: last data: 21.0
+01-25 16:37:09.260 21313-21313/vn.encode.vp9.ambientlight E/ryu: last data: 51.0
+01-25 16:37:09.260 21313-21313/vn.encode.vp9.ambientlight E/ryu: last data: 119.0
+01-25 16:37:09.260 21313-21313/vn.encode.vp9.ambientlight E/ryu: last data: 184.0
+01-25 16:37:09.260 21313-21313/vn.encode.vp9.ambientlight E/ryu: last data: 219.0
+01-25 16:37:09.260 21313-21313/vn.encode.vp9.ambientlight E/ryu: last data: 274.0
+01-25 16:37:09.260 21313-21313/vn.encode.vp9.ambientlight E/ryu: last data: 331.0
+01-25 16:37:09.260 21313-21313/vn.encode.vp9.ambientlight E/ryu: last data: 385.0
+01-25 16:37:09.260 21313-21313/vn.encode.vp9.ambientlight E/ryu: last data: 448.0
+
+test2:
+
+01-25 16:38:36.908 21313-21313/vn.encode.vp9.ambientlight E/ryu: last data: 3.0
+01-25 16:38:36.908 21313-21313/vn.encode.vp9.ambientlight E/ryu: last data: 21.0
+01-25 16:38:36.908 21313-21313/vn.encode.vp9.ambientlight E/ryu: last data: 51.0
+01-25 16:38:36.908 21313-21313/vn.encode.vp9.ambientlight E/ryu: last data: 119.0
+01-25 16:38:36.908 21313-21313/vn.encode.vp9.ambientlight E/ryu: last data: 185.0
+01-25 16:38:36.908 21313-21313/vn.encode.vp9.ambientlight E/ryu: last data: 220.0
+01-25 16:38:36.908 21313-21313/vn.encode.vp9.ambientlight E/ryu: last data: 276.0
+01-25 16:38:36.908 21313-21313/vn.encode.vp9.ambientlight E/ryu: last data: 331.0
+01-25 16:38:36.908 21313-21313/vn.encode.vp9.ambientlight E/ryu: last data: 386.0
+01-25 16:38:36.908 21313-21313/vn.encode.vp9.ambientlight E/ryu: last data: 445.0
+
+test3:
+
+01-25 16:40:15.351 21313-21313/vn.encode.vp9.ambientlight E/ryu: last data: 3.0
+01-25 16:40:15.351 21313-21313/vn.encode.vp9.ambientlight E/ryu: last data: 18.0
+01-25 16:40:15.351 21313-21313/vn.encode.vp9.ambientlight E/ryu: last data: 51.0
+01-25 16:40:15.352 21313-21313/vn.encode.vp9.ambientlight E/ryu: last data: 119.0
+01-25 16:40:15.352 21313-21313/vn.encode.vp9.ambientlight E/ryu: last data: 184.0
+01-25 16:40:15.352 21313-21313/vn.encode.vp9.ambientlight E/ryu: last data: 220.0
+01-25 16:40:15.352 21313-21313/vn.encode.vp9.ambientlight E/ryu: last data: 274.0
+01-25 16:40:15.352 21313-21313/vn.encode.vp9.ambientlight E/ryu: last data: 330.0
+01-25 16:40:15.352 21313-21313/vn.encode.vp9.ambientlight E/ryu: last data: 387.0
+01-25 16:40:15.352 21313-21313/vn.encode.vp9.ambientlight E/ryu: last data: 447.0

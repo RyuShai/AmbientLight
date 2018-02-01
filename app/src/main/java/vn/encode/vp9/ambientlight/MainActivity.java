@@ -11,6 +11,8 @@ import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
+import android.media.Image;
+import android.media.MediaPlayer;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Environment;
@@ -25,6 +27,7 @@ import android.view.WindowManager;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.ProgressBar;
 import android.widget.SeekBar;
@@ -45,7 +48,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     int ambientValue = 0;
     TextView text, screenBrightness;
     ListView listView;
-    Button btn;
+    Button btn, hide;
     SensorManager sManger;
     Sensor sLight;
     List<Float> value;
@@ -53,13 +56,14 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     boolean stop=false;
     float currentValue,lastValue=-1;
     EditText editText;
-    int iTimer=0;
-    ArrayAdapter<Float> adapter;
+    ArrayList<String> arrayList;
+    ArrayAdapter<String> adapter;
     Button clear,pause;
     FileOutputStream outputStream;
-    ArrayList<ArrayList<Float>> totalList;
-    int listSize=20;
-    int cycle=0;
+    MediaPlayer mdp;
+
+
+    List<Float> listValue;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -78,26 +82,36 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             public void onClick(View v) {
                 stop = !stop;
                 if(stop)
-                    pause.setText("true");
+                    pause.setText("stop");
                 else
-                    pause.setText("false");
+                    pause.setText("running");
+                listValue.clear();
+                arrayList.clear();
+                lastValue = currentValue = 0;
             }
         });
         editText = (EditText) findViewById(R.id.editText);
+        listValue = new ArrayList<>();
+        arrayList = new ArrayList<>();
         listView = (ListView) findViewById(R.id.listView);
+        adapter = new ArrayAdapter<String>(this,android.R.layout.simple_list_item_1,arrayList);
+        listView.setAdapter(adapter);
         clear = (Button) findViewById(R.id.clear);
+        clear.setEnabled(false);
         clear.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 WriteValueToFile();
-                value.clear();
+                arrayList.clear();
                 updateListview();
+                clear.setEnabled(false);
             }
         });
         stableTimer = new Timer();
         btn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                stop = true;
                 Intent brightnessView = new Intent(MainActivity.this,ScreenBrightnessChange.class);
                 brightnessView.putExtra("RYU",Integer.parseInt(editText.getText().toString()));
                 startActivity(brightnessView);
@@ -106,116 +120,45 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
         value = new ArrayList<Float>();
         text = (TextView) findViewById(R.id.textView);
-        updateListview();
         GetSensor();
-        totalList = new ArrayList<>();
-        for(int i=0; i<listSize;i++)
-        {
-            totalList.add(new ArrayList<Float>());
-        }
+
+
+        mdp = MediaPlayer.create(this,R.raw.beep);
+
     }
 
-
-    List<Float> RemoveSameValue(List<Float> list)
+    List<Float> Sub5Value(List<Float> list)
     {
-        float current=-1;
-        List<Float> result = new ArrayList<Float>();
         Collections.sort(list);
-        while (list.size()>0)
+        List<Float> resutl = new ArrayList<>();
+        int stable=0;
+        int iAddPoint=-1;
+        for(int i=0; i<list.size()-1;i++)
         {
-//            Log.e ("ryu","sort: "+ list.get(0));
-            current = list.get(0);
-            result.add(current);
-            list.remove(0);
-            List<Float> countList = list;
-            while(list.remove(current))
+            if(list.get(i+1)-list.get(i)<5)
             {
+                if(iAddPoint==-1)
+                    iAddPoint =i;
 
+                    stable++;
             }
-        }
-        for(int i=0; i<result.size();i++)
-        {
-            Log.e("ryu", "resutl: "+ result.get(i));
-        }
-        for(int i=0; i<result.size()-1;i++)
-        {
-            float sub = result.get(i+1)-result.get(i);
-            float ratio = (float) Math.ceil(result.get(i)*0.2);
-            Log.e("ryu", "sub: "+ sub +" ratio: "+ ratio);
-            if(sub<=ratio)
+            else
             {
-                result.remove(i+1);
-                i=0;
-            }
-        }
-        if(result.size()>10)
-        {
-             float chechLech=result.get(result.size()-1);
-             float subValue;
-             List<Float> pos = new ArrayList<>();
-            for( int i=0; i>result.size()-1;i++)
-            {
-                pos.add(result.get(i+1)-result.get(i));
-            }
-            float min=500;
-            int position=0;
-            while (result.size()>10)
-            {
-                for(int i=0; i<result.size();i++)
+                if(iAddPoint!= -1 && stable>8)
                 {
-                    if(pos.get(i)<min)
-                    {
-                        min= pos.get(i);
-                        position = i;
-                    }
+                    resutl.add(list.get(iAddPoint));
+                    iAddPoint=-1;
+                    stable=0;
                 }
-                result.remove(result.get(position));
-                pos.remove(result.get(position));
             }
         }
-        return result;
-    }
-
-    Float TotalListValue(List<Float> list)
-    {
-        float result=0;
-        if(list.size()==0)
-            return  result;
-        for(int i=0;i<list.size();i++)
+        if(iAddPoint!= -1 && stable>8)
         {
-            result+=list.get(i);
+            resutl.add(list.get(iAddPoint));
         }
-        return (result/list.size());
+        return  resutl;
     }
 
-    float GetMostCommonValue(ArrayList<Float> list)
-    {
-        float result=-1,current=-1;
-        int i=0,count=0,maxcount=0;
-        Collections.sort(list);
-        while (list.size()>0)
-        {
-//           Log.e ("ryu","sort: "+ list.get(0));
-           current = list.get(0);
-
-           list.remove(0);
-           List<Float> countList = list;
-           while(list.remove(current))
-           {
-               count++;
-               if(count>maxcount)
-               {
-                   maxcount=count;
-                   result = current;
-               }
-           }
-           count =0;
-        }
-        if(result==-1)
-            return current;
-        else
-            return result;
-    }
     void CheckPermission()
     {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
@@ -237,86 +180,64 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
     void updateListview()
     {
-        if(adapter == null)
+        Log.e("ryu","data chaged");
+        for(int i =0; i<arrayList.size();i++)
         {
-            adapter = new ArrayAdapter<Float>(this,android.R.layout.simple_list_item_1,value);
-            listView.setAdapter(adapter);
+            Log.e("ryu", "arrayList: "+ listValue.get(i));
         }
         adapter.notifyDataSetChanged();
     }
-
     @Override
     public void onSensorChanged(SensorEvent event) {
         if(stop)
             return;
         currentValue = event.values[0];
-        if(lastValue == -1)
+        listValue.add(currentValue);
+
+        if(listValue.size()>=200)
         {
-            lastValue = currentValue;
-            totalList.get(cycle).add(currentValue);
-        }
-        else
-        {
-            if(ItinRange())
+            Print(listValue);
+            OnStopChanged();
+//            GetMostCommonValue((ArrayList<Float>) listValue);
+            listValue =(ArrayList<Float>) Sub5Value(listValue);
+            arrayList.clear();
+            Collections.sort(listValue);
+            for(int i =0; i<listValue.size();i++)
             {
-                totalList.get(cycle).add(currentValue);
+                Log.e("ryu", "arrayList: "+ listValue.get(i));
+                arrayList.add(String.valueOf(listValue.get(i)));
             }
-            else
-            {
-                cycle++;
-                if(cycle>=listSize)
-                {
-                    Log.e("ryu", "cycle > 9");
-                    cycle=1;
-                    stop = true;
-                    pause.setText("paused");
-                    for(int i =0 ;i<totalList.size();i++)
-                    {
-//                        Log.e("ryu", "list i: "+i);
-                        value.add(GetMostCommonValue(totalList.get(i)));
-                    }
-                    value = RemoveSameValue(value);
-                    Log.e("ryu","value size: " + value.size());
-                    for(int i =0 ;i<value.size();i++)
-                    {
-                        Log.e("ryu", "value: "+ value.get(i));
-                    }
-                }
-                totalList.get(cycle).add(currentValue);
-            }
+            updateListview();
+            clear.setEnabled(true);
+            mdp.start();
+            return;
         }
+
         lastValue = currentValue;
         text.setText("Lux: "+String.valueOf(currentValue));
 
     }
-    boolean ItinRange()
-    {
-        if(totalList.get(cycle).size()<=0)
-            return false;
-        float subtain = Math.abs(TotalListValue(totalList.get(cycle))-currentValue);
-        if(subtain>(lastValue*0.2))
-        {
-            return false;
-        }
-        else
-            return true;
-    }
+
     void WriteValueToFile()
     {
-        String filename = Environment.getExternalStorageDirectory()+"/"+String.valueOf(System.currentTimeMillis())+".txt";
-        Log.e("RYu",filename);
+        String directory = Environment.getExternalStorageDirectory()+"/AmbientLight/";
+
+        String filename = String.valueOf(System.currentTimeMillis())+".txt";
+        Log.e("RYu",directory+filename);
         try {
+            File f = new File(directory);
+            if(!f.exists()|| !f.isDirectory())
+            {
+                f.mkdir();
+            }
+            filename = directory+filename;
             File yourFile = new File(filename);
             yourFile.createNewFile();
             outputStream = new FileOutputStream(yourFile,false);
-            for(int i=0; i<value.size();i++)
+            for(int i=0; i<listValue.size();i++)
             {
-                outputStream.write(Float.toString(value.get(i)).getBytes());
+                outputStream.write(Float.toString(listValue.get(i)).getBytes());
                 outputStream.write(" ".getBytes());
-                if(value.get(i)>200 && value.get(i+1)<10)
-                {
-                    outputStream.write("\n".getBytes());
-                }
             }
             outputStream.close();
         } catch (Exception e) {
@@ -326,12 +247,39 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
     @Override
     public void onAccuracyChanged(Sensor sensor, int accuracy) {
-        Log.e("ryu","accuraty: "+ accuracy);
     }
 
+
+    void OnStopChanged()
+    {
+        stop = !stop;
+        if(stop)
+        {
+            pause.setText("stop");
+        }
+        else
+        {
+            pause.setText("running");
+        }
+    }
     @Override
     protected void onResume() {
         super.onResume();
-        sManger.registerListener(this,sLight,SensorManager.SENSOR_DELAY_UI,1000);
+        sManger.registerListener(this,sLight,SensorManager.SENSOR_DELAY_UI,50);
     }
+
+    void Print(List<Float> list)
+    {
+
+        for(int i =0; i<list.size();i++)
+        {
+            Log.e("ryu", "origin: "+ list.get(i));
+        }
+        Collections.sort(list);
+        for(int i =0; i<list.size();i++)
+        {
+            Log.e("ryu", "sorted: "+ list.get(i));
+        }
+    }
+
 }
