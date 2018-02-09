@@ -125,6 +125,8 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
         mdp = MediaPlayer.create(this,R.raw.beep);
 
+
+
     }
 
     List<Float> Sub5Value(List<Float> list)

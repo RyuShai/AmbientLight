@@ -2,9 +2,15 @@ package vn.encode.vp9.ambientlight;
 
 import android.content.Intent;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.Canvas;
+import android.graphics.ColorMatrix;
+import android.graphics.ColorMatrixColorFilter;
+import android.graphics.Paint;
 import android.graphics.SurfaceTexture;
 import android.media.MediaPlayer;
 import android.os.Handler;
+import android.os.SystemClock;
 import android.provider.MediaStore;
 import android.provider.Settings;
 import android.support.v7.app.AppCompatActivity;
@@ -19,13 +25,15 @@ import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.RadioButton;
 
-//import org.opencv.android.OpenCVLoader;
-//import org.opencv.android.Utils;
-//import org.opencv.core.Mat;
-//import org.opencv.core.Size;
-//import org.opencv.imgproc.Imgproc;
+import org.opencv.android.OpenCVLoader;
+import org.opencv.android.Utils;
+import org.opencv.core.Mat;
+import org.opencv.core.Size;
+import org.opencv.imgproc.Imgproc;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -37,16 +45,17 @@ public class ScreenBrightnessChange extends AppCompatActivity implements
         MediaPlayer.OnVideoSizeChangedListener,
         MediaPlayer.OnBufferingUpdateListener{
 
-//    static {
-//        if(OpenCVLoader.initDebug())
-//        {
-//            Log.e("ryu", "ngon");
-//        }
-//        else
-//        {
-//            Log.e("ryu", "f***");
-//        }
-//    }
+    static {
+        System.loadLibrary("native-lib");
+        if(OpenCVLoader.initDebug())
+        {
+            Log.e("ryu", "ngon");
+        }
+        else
+        {
+            Log.e("ryu", "f***");
+        }
+    }
 
     Timer timer;
     int ambientValue = 0;
@@ -58,8 +67,8 @@ public class ScreenBrightnessChange extends AppCompatActivity implements
 
     TextureView textureView;
     MediaPlayer mp;
-//    List<Mat> totalFrame;
-    boolean isRun =false;
+    List<Mat> totalFrame;
+    boolean isRun =true;
     int biChia = 1;
     List<Float> listData;
     List<Float> result;
@@ -81,6 +90,7 @@ public class ScreenBrightnessChange extends AppCompatActivity implements
                 if(!isAuto)
                 {
                     isAuto = true;
+                    img.setAlpha(0);
                     timer = new Timer();
                     timer.schedule(new TimerTask() {
                         @Override
@@ -88,34 +98,50 @@ public class ScreenBrightnessChange extends AppCompatActivity implements
                             IncreaseBrighness();
                         }
                     },0,delayTime);
-                    if(!isRun)
-                    {
-                        Handler handler = new Handler();
-                        handler.postDelayed(new Runnable() {
-                            @Override
-                            public void run() {
-                                mp.start();
-                                textureView.setAlpha(0);
-                            }
-                        }, 10000);
-                    }
+//                    Log.e("ryu", "isplayijg: "+ mp.isPlaying());
+//                    if(!isRun && !mp.isPlaying())
+//                    {
+//                        Handler handler = new Handler();
+//                        handler.postDelayed(new Runnable() {
+//                            @Override
+//                            public void run() {
+//                                mp.start();
+//                                img.setAlpha(0);
+//                            }
+//                        }, 5000);
+//                    }
                 }
             }
         });
         img = (ImageView) findViewById(R.id.imageView);
-        img.setImageResource(R.drawable.chesstable);
-        img.setAlpha((float)0);
+//        img.setImageResource(R.drawable.chesstable);
+        Bitmap bm = BitmapFactory.decodeResource(getResources(),R.drawable.chesstable);
+        changeBitmapContrastBrightness(bm,0,50);
+        img.setImageBitmap(bm);
+
         hide = (Button) findViewById(R.id.hide);
         hide.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                if(img.getAlpha()==(float) 0)
+//                if(img.getAlpha()==(float) 0)
+//                {
+//                    img.setAlpha((float) 1.0);
+//                }
+//                else
+//                {
+//                    img.setAlpha((float)0);
+//                }
+                if(!isRun)
                 {
-                    img.setAlpha((float) 1.0);
-                }
-                else
-                {
-                    img.setAlpha((float)0);
+                    Handler handler = new Handler();
+                    handler.postDelayed(new Runnable() {
+                        @Override
+                        public void run() {
+                            mp.start();
+//                            textureView.setAlpha(0);
+
+                        }
+                    }, 5000);
                 }
             }
         });
@@ -150,6 +176,7 @@ public class ScreenBrightnessChange extends AppCompatActivity implements
                     Log.e("ryu","cancel purge");
 
                 }
+
                 IncreaseBrighness();
 
             }
@@ -157,8 +184,15 @@ public class ScreenBrightnessChange extends AppCompatActivity implements
 
         textureView = (TextureView) findViewById(R.id.textureView);
         textureView.setSurfaceTextureListener(this);
+        textureView.setAlpha(0);
         playSound = MediaPlayer.create(this,R.raw.beep);
         Log.e("Ryu", "create second page"+ String.valueOf(delayTime));
+
+        result = new ArrayList<>();
+        listData = new ArrayList<>();
+        totalFrame = new ArrayList<>();
+
+        stringFromJNI();
     }
 
 
@@ -168,20 +202,23 @@ public class ScreenBrightnessChange extends AppCompatActivity implements
         super.onBackPressed();
         timer.cancel();
     }
-
+    long lastTime=0;
     void IncreaseBrighness()
     {
-            if(ambientValue>252){
-                ambientValue= 0;
-
-            }
-            if(ambientValue==0)
-                delayTime = delayTime*2;
-            else if(ambientValue ==28)
-            {
-                delayTime = delayTime/2;
+        Log.e("ryu", "last: "+String.valueOf(System.currentTimeMillis()-lastTime)+" ambient"+ ambientValue);
+            if(ambientValue>252) {
+                ambientValue = 0;
             }
             Settings.System.putInt(getApplicationContext().getContentResolver(),Settings.System.SCREEN_BRIGHTNESS,ambientValue);
+            lastTime = System.currentTimeMillis();
+            if(ambientValue == 0 )
+            {
+                long ftime = System.currentTimeMillis();
+                while(System.currentTimeMillis()-ftime<(delayTime+1000))
+                {
+
+                }
+            }
 //            Log.e("ryu", "ambientValue: "+ ambientValue);
 
             ambientValue+=28;
@@ -218,6 +255,8 @@ public class ScreenBrightnessChange extends AppCompatActivity implements
         Log.e("ryu", "ambientValue: "+ ambientValue);
 
     }
+    public native String stringFromJNI();
+    public native int getIntfromMat(long matAdrr);
 
     @Override
     public void onBufferingUpdate(MediaPlayer mp, int percent) {
@@ -231,14 +270,14 @@ public class ScreenBrightnessChange extends AppCompatActivity implements
 
     @Override
     public void onPrepared(MediaPlayer mediap) {
-        Handler handler = new Handler();
-        handler.postDelayed(new Runnable() {
-            @Override
-            public void run() {
-                mp.start();
-                textureView.setAlpha(0);
-            }
-        }, 10000);
+//        Handler handler = new Handler();
+//        handler.postDelayed(new Runnable() {
+//            @Override
+//            public void run() {
+//                mp.start();
+////                textureView.setAlpha(0);
+//            }
+//        }, 10000);
     }
 
     @Override
@@ -248,36 +287,39 @@ public class ScreenBrightnessChange extends AppCompatActivity implements
 
     @Override
     public void onSurfaceTextureAvailable(SurfaceTexture surface, int width, int height) {
-//        Surface s = new Surface(surface);
-//
-//        try
-//        {
-//            mp = new MediaPlayer();
-//            mp.setDataSource("rtsp://admin:1111@10.12.11.135:554/av0_0");
-//            mp.setSurface(s);
-//            mp.prepare();
-//
-//            mp.setOnBufferingUpdateListener(this);
-//            mp.setOnCompletionListener(this);
-//            mp.setOnPreparedListener(this);
-//            mp.setOnVideoSizeChangedListener(this);
-//
-//
-//
-//        }
-//        catch (IllegalArgumentException e) {
-//            // TODO Auto-generated catch block
-//            e.printStackTrace();
-//        } catch (SecurityException e) {
-//            // TODO Auto-generated catch block
-//            e.printStackTrace();
-//        } catch (IllegalStateException e) {
-//            // TODO Auto-generated catch block
-//            e.printStackTrace();
-//        } catch (IOException e) {
-//            // TODO Auto-generated catch block
-//            e.printStackTrace();
-//        }
+       if(!isRun)
+       {
+           Surface s = new Surface(surface);
+
+           try
+           {
+               mp = new MediaPlayer();
+               mp.setDataSource("rtsp://admin:1111@10.11.11.41:554/av0_0");
+               mp.setSurface(s);
+               mp.prepare();
+
+               mp.setOnBufferingUpdateListener(this);
+               mp.setOnCompletionListener(this);
+               mp.setOnPreparedListener(this);
+               mp.setOnVideoSizeChangedListener(this);
+
+
+
+           }
+           catch (IllegalArgumentException e) {
+               // TODO Auto-generated catch block
+               e.printStackTrace();
+           } catch (SecurityException e) {
+               // TODO Auto-generated catch block
+               e.printStackTrace();
+           } catch (IllegalStateException e) {
+               // TODO Auto-generated catch block
+               e.printStackTrace();
+           } catch (IOException e) {
+               // TODO Auto-generated catch block
+               e.printStackTrace();
+           }
+       }
     }
 
     @Override
@@ -292,92 +334,125 @@ public class ScreenBrightnessChange extends AppCompatActivity implements
 
     @Override
     public void onSurfaceTextureUpdated(SurfaceTexture surface) {
-//        if(!isRun)
-//        {
-//            if(frameCount<1500)
-//            {
-//                Mat mat = new Mat();
-//                Bitmap bm = textureView.getBitmap();
-//                bm = bm .copy(Bitmap.Config.ARGB_8888, true);
-//                Utils.bitmapToMat(bm, mat);
-//                Imgproc.cvtColor(mat,mat,Imgproc.COLOR_RGB2GRAY);
+        if(!isRun)
+        {
+            if(frameCount<1500)
+            {
+                Mat mat = new Mat();
+                Bitmap bm = textureView.getBitmap();
+                bm = bm .copy(Bitmap.Config.ARGB_8888, true);
+                Utils.bitmapToMat(bm, mat);
+                Imgproc.cvtColor(mat,mat,Imgproc.COLOR_RGB2GRAY);
 //                Imgproc.resize(mat, mat, new Size(mat.cols()*0.3,mat.rows()*0.3));
+                float addValue = getIntfromMat(mat.getNativeObjAddr());
+                listData.add(addValue);
 //                totalFrame.add(mat);
-//                frameCount++;
-//            }
-//            else
-//            {
-//                isRun=true;
-//                ImageDo();
-//            }
-//
-//        }
+                frameCount++;
+            }
+            else
+            {
+                isRun=true;
+                ImageDo();
+            }
+
+        }
     }
 
-//    void ImageDo()
-//    {
+    void ImageDo()
+    {
 //        Log.e("ryu", "end: "+totalFrame.size());
-//        int stable=0;
-//        double totalPixelValue=0;
-//        float sub=0, totalPlus=0;
+        int stable=0;
+//        int totalPixelValue=0;
+        float sub=0, totalPlus=0;
 //        Log.e("ryu","row: "+ totalFrame.get(0).rows()+" height: "+ totalFrame.get(0).cols());
 //        int width = totalFrame.get(0).cols();
 //        int heith = totalFrame.get(0).rows();
 //        biChia = width*heith;
 //        listData.clear();
-//        /////////////////
+        /////////////////
 //        for(int pos=0; pos<totalFrame.size();pos++)
 //        {
 //            Mat mat = totalFrame.get(pos);
-//            for(int i=0; i<heith;i++)
-//            {
-//                for(int j=0; j<width;j++)
-//                {
-//                    totalPixelValue+=mat.get(i,j)[0];
-////                            Log.e("ryu", "value: "+ mat.get(j,i)[0]);
-//                }
-//            }
+//            totalPixelValue = getIntfromMat(mat.getNativeObjAddr());
 //            Log.e("ryu", "origin: "+ totalPixelValue/(biChia)+ " "+ listData.size());
 //            listData.add((float) totalPixelValue/(biChia));
 //            totalPixelValue =0;
 //        }
-//
-//
-//
-//        ///////////////////
-//        for(int i=0; i<listData.size()-1;i++)
-//        {
-//            sub = listData.get(i+1)-listData.get(i);
-//            if(sub<2 && sub>(-2))
-//            {
-//                stable++;
-//                totalPlus +=listData.get(i);
-//            }
-//            else
-//            {
-//                if(stable>10)
-//                {
-//                    totalPlus+=listData.get(i);
-//                    stable++;
-//                    float rs = totalPlus/stable;
-//                    result.add(rs);
-//                    stable =0;
-//                    totalPlus=0;
-//                }
-//                else
-//                {
-//                    stable=0;
-//                    totalPlus=0;
-//                }
-//
-//            }
-//        }
-//        Log.e("ryu","ryusult size: " + result.size());
-//        for(int i=0; i<result.size();i++)
-//        {
-//            Log.e("ryu", "result: " + result.get(i));
-//        }
-//        playSound.start();
-//        isRun = false;
-//    }
+
+
+
+        ///////////////////
+        for(int i=0; i<listData.size()-1;i++)
+        {
+            sub = listData.get(i+1)-listData.get(i);
+            if(sub<2 && sub>(-2))
+            {
+                stable++;
+                totalPlus +=listData.get(i);
+            }
+            else
+            {
+                if(stable>10)
+                {
+                    totalPlus+=listData.get(i);
+                    stable++;
+                    float rs = totalPlus/stable;
+                    result.add(rs);
+                    stable =0;
+                    totalPlus=0;
+                }
+                else
+                {
+                    stable=0;
+                    totalPlus=0;
+                }
+
+            }
+        }
+//        UniqueList();
+        Log.e("ryu","ryusult size: " + result.size());
+        for(int i=0; i<result.size();i++)
+        {
+            Log.e("ryu", "result: " + result.get(i));
+        }
+        playSound.start();
+        textureView.setAlpha(0);
+        listData.clear();
+    }
+
+    void UniqueList()
+    {
+        HashSet<Float> hashSet = new HashSet<Float>();
+        hashSet.addAll(result);
+        result.clear();
+        result.addAll(hashSet);
+    }
+
+    /**
+     *
+     * @param bmp input bitmap
+     * @param contrast 0..10 1 is default
+     * @param brightness -255..255 0 is default
+     * @return new bitmap
+     */
+    public static Bitmap changeBitmapContrastBrightness(Bitmap bmp, float contrast, float brightness)
+    {
+        ColorMatrix cm = new ColorMatrix(new float[]
+                {
+                        contrast, 0, 0, 0, brightness,
+                        0, contrast, 0, 0, brightness,
+                        0, 0, contrast, 0, brightness,
+                        0, 0, 0, 1, 0
+                });
+
+        Bitmap ret = Bitmap.createBitmap(bmp.getWidth(), bmp.getHeight(), bmp.getConfig());
+
+        Canvas canvas = new Canvas(ret);
+
+        Paint paint = new Paint();
+        paint.setColorFilter(new ColorMatrixColorFilter(cm));
+        canvas.drawBitmap(bmp, 0, 0, paint);
+
+        return ret;
+    }
 }

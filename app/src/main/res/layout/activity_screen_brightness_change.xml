@@ -34,8 +34,7 @@
         app:layout_constraintBottom_toTopOf="@+id/radioButton"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:srcCompat="@mipmap/ic_launcher_foreground" />
+        app:layout_constraintTop_toTopOf="parent" />
 
     <Button
         android:id="@+id/hide"
@@ -75,6 +74,7 @@
         android:layout_marginBottom="185dp"
         android:layout_marginStart="44dp"
         android:layout_marginTop="38dp"
+        android:alpha="1"
         android:visibility="visible"
         app:layout_constraintBottom_toTopOf="@+id/radioButton"
         app:layout_constraintStart_toStartOf="parent"
