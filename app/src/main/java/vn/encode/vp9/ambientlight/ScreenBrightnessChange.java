@@ -27,7 +27,9 @@ import android.widget.RadioButton;
 
 import org.opencv.android.OpenCVLoader;
 import org.opencv.android.Utils;
+import org.opencv.core.CvType;
 import org.opencv.core.Mat;
+import org.opencv.core.Scalar;
 import org.opencv.core.Size;
 import org.opencv.imgproc.Imgproc;
 
@@ -90,7 +92,7 @@ public class ScreenBrightnessChange extends AppCompatActivity implements
                 if(!isAuto)
                 {
                     isAuto = true;
-                    img.setAlpha(0);
+//                    img.setAlpha(0);
                     timer = new Timer();
                     timer.schedule(new TimerTask() {
                         @Override
@@ -114,10 +116,7 @@ public class ScreenBrightnessChange extends AppCompatActivity implements
             }
         });
         img = (ImageView) findViewById(R.id.imageView);
-//        img.setImageResource(R.drawable.chesstable);
-        Bitmap bm = BitmapFactory.decodeResource(getResources(),R.drawable.chesstable);
-        changeBitmapContrastBrightness(bm,0,50);
-        img.setImageBitmap(bm);
+        ChangeImageColor(0);
 
         hide = (Button) findViewById(R.id.hide);
         hide.setOnClickListener(new View.OnClickListener() {
@@ -176,8 +175,17 @@ public class ScreenBrightnessChange extends AppCompatActivity implements
                     Log.e("ryu","cancel purge");
 
                 }
-
-                IncreaseBrighness();
+//
+//                IncreaseBrighness();
+//                Mat matImg = new Mat(1080,1920, CvType.CV_8UC1,new Scalar(ambientValue));
+//                Log.e("ryu", "mat size: "+matImg.rows() + " "+ matImg.cols());
+//                Bitmap bmp = Bitmap.createBitmap(matImg.cols(), matImg.rows(), Bitmap.Config.RGB_565);
+//                Utils.matToBitmap(matImg, bmp);
+//                img.setImageBitmap(bmp);
+                ChangeImageColor(ambientValue);
+                ambientValue+=50;
+                if(ambientValue>250)
+                    ambientValue=0;
 
             }
         });
@@ -193,9 +201,24 @@ public class ScreenBrightnessChange extends AppCompatActivity implements
         totalFrame = new ArrayList<>();
 
         stringFromJNI();
+        Settings.System.putInt(getApplicationContext().getContentResolver(),Settings.System.SCREEN_BRIGHTNESS,255);
     }
 
+    void ChangeImageColor(final int value)
+    {
 
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                Mat matImg = new Mat(3240,2100, CvType.CV_8UC1,new Scalar(value));
+                Log.e("ryu", "mat size: "+matImg.rows() + " "+ matImg.cols());
+                Bitmap bmp = Bitmap.createBitmap(matImg.cols(), matImg.rows(), Bitmap.Config.RGB_565);
+                Utils.matToBitmap(matImg, bmp);
+                img.setImageBitmap(bmp);
+            }
+        });
+
+    }
 
     @Override
     public void onBackPressed() {
@@ -205,24 +228,29 @@ public class ScreenBrightnessChange extends AppCompatActivity implements
     long lastTime=0;
     void IncreaseBrighness()
     {
-        Log.e("ryu", "last: "+String.valueOf(System.currentTimeMillis()-lastTime)+" ambient"+ ambientValue);
-            if(ambientValue>252) {
-                ambientValue = 0;
-            }
-            Settings.System.putInt(getApplicationContext().getContentResolver(),Settings.System.SCREEN_BRIGHTNESS,ambientValue);
-            lastTime = System.currentTimeMillis();
-            if(ambientValue == 0 )
-            {
-                long ftime = System.currentTimeMillis();
-                while(System.currentTimeMillis()-ftime<(delayTime+1000))
-                {
-
-                }
-            }
+//        Log.e("ryu", "last: "+String.valueOf(System.currentTimeMillis()-lastTime)+" ambient"+ ambientValue);
+//            if(ambientValue>250) {
+//                ambientValue = 0;
+//            }
+//            ChangeImageColor(ambientValue);
+//            lastTime = System.currentTimeMillis();
+//            if(ambientValue == 0 )
+//            {
+//                long ftime = System.currentTimeMillis();
+//                while(System.currentTimeMillis()-ftime<(delayTime+1000))
+//                {
+//
+//                }
+//            }
 //            Log.e("ryu", "ambientValue: "+ ambientValue);
 
-            ambientValue+=28;
+//            ambientValue+=50;
 //        Log.e("ryu", "delay : "+delayTime);
+
+        ChangeImageColor(ambientValue);
+        ambientValue+=50;
+        if(ambientValue>250)
+            ambientValue=0;
 
     }
 
@@ -257,6 +285,7 @@ public class ScreenBrightnessChange extends AppCompatActivity implements
     }
     public native String stringFromJNI();
     public native int getIntfromMat(long matAdrr);
+    public native void setInt2Mat(long matAdrr, int value);
 
     @Override
     public void onBufferingUpdate(MediaPlayer mp, int percent) {
@@ -428,31 +457,5 @@ public class ScreenBrightnessChange extends AppCompatActivity implements
         result.addAll(hashSet);
     }
 
-    /**
-     *
-     * @param bmp input bitmap
-     * @param contrast 0..10 1 is default
-     * @param brightness -255..255 0 is default
-     * @return new bitmap
-     */
-    public static Bitmap changeBitmapContrastBrightness(Bitmap bmp, float contrast, float brightness)
-    {
-        ColorMatrix cm = new ColorMatrix(new float[]
-                {
-                        contrast, 0, 0, 0, brightness,
-                        0, contrast, 0, 0, brightness,
-                        0, 0, contrast, 0, brightness,
-                        0, 0, 0, 1, 0
-                });
 
-        Bitmap ret = Bitmap.createBitmap(bmp.getWidth(), bmp.getHeight(), bmp.getConfig());
-
-        Canvas canvas = new Canvas(ret);
-
-        Paint paint = new Paint();
-        paint.setColorFilter(new ColorMatrixColorFilter(cm));
-        canvas.drawBitmap(bmp, 0, 0, paint);
-
-        return ret;
-    }
 }

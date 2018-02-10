@@ -2,6 +2,7 @@
 #include <string>
 #include <iostream>
 #include <opencv2/core.hpp>
+#include <opencv2/imgproc.hpp>
 #include <android/log.h>
 
 using  namespace cv;
@@ -41,5 +42,10 @@ JNIEXPORT jint JNICALL Java_vn_encode_vp9_ambientlight_ScreenBrightnessChange_ge
     total = total/(pInputImage->cols*pInputImage->rows);
     LOGE("Value %d",total);
     return total;
+}
+
+JNIEXPORT void JNICALL Java_vn_encode_vp9_ambientlight_ScreenBrightnessChange_setInt2Mat(JNIEnv *env, jobject thiz, long addrInputImage, jint value)
+{
+    cv::Mat* pInputImage = (cv::Mat*)addrInputImage;
 }
 }
